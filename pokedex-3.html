@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pokédex Preparatoria</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: negrita, sans-serif;
+      background: #f0f0f0;
+      color: #333;
+    }
+
+    header {
+      background: #e3350d;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    header h1 {
+      color: #fff;
+      font-size: 24px;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
+
+    #buscador {
+      padding: 8px 14px;
+      border: none;
+      border-radius: 20px;
+      font-size: 14px;
+      width: 220px;
+      outline: none;
+    }
+
+    #pokedex-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 16px;
+      padding: 24px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      transition: transform .2s, box-shadow .2s;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+    }
+
+    .card .number {
+      display: block;
+      font-size: 12px;
+      color: #999;
+      margin-bottom: 6px;
+    }
+
+    .card img {
+      width: 100px;
+      height: 100px;
+      object-fit: contain;
+    }
+
+    .card .pokemon-name {
+      font-size: 14px;
+      font-weight: bold;
+      text-transform: capitalize;
+      margin: 8px 0 4px;
+    }
+
+    .card p {
+      font-size: 12px;
+      color: #666;
+    }
+
+    #modal-pokemon {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-caja {
+      background: #fff;
+      border-radius: 16px;
+      padding: 32px;
+      max-width: 360px;
+      width: 90%;
+      text-align: center;
+      position: relative;
+    }
+
+    #cerrar-modal {
+      position: absolute;
+      top: 12px; right: 16px;
+      background: none;
+      border: none;
+      font-size: 22px;
+      cursor: pointer;
+      color: #555;
+    }
+
+    #modal-img {
+      width: 140px;
+      height: 140px;
+      object-fit: contain;
+    }
+
+    #modal-nombre {
+      font-size: 22px;
+      font-weight: bold;
+      margin: 8px 0 16px;
+    }
+
+    .modal-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .stat-item {
+      background: #f5f5f5;
+      border-radius: 8px;
+      padding: 8px;
+    }
+
+    .stat-item .label {
+      font-size: 11px;
+      color: #999;
+      text-transform: uppercase;
+    }
+
+    .stat-item .value {
+      font-size: 18px;
+      font-weight: bold;
+      color: #333;
+    }
+
+    .modal-info {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      margin-top: 12px;
+      font-size: 13px;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Pokédex Preparatoria</h1>
+  <input type="text" id="buscador" placeholder="Buscar Pokémon...">
+</header>
+
+<div id="pokedex-container"></div>
+
+<div id="modal-pokemon">
+  <div class="modal-caja">
+    <button id="cerrar-modal">✕</button>
+    <img id="modal-img" src="" alt="">
+    <h2 id="modal-nombre"></h2>
+    <div class="modal-info">
+      <span>Altura: <strong><span id="modal-altura"></span> m</strong></span>
+      <span>Peso: <strong><span id="modal-peso"></span> kg</strong></span>
+    </div>
+    <div class="modal-stats">
+      <div class="stat-item">
+        <div class="label">HP</div>
+        <div class="value" id="modal-hp"></div>
+      </div>
+      <div class="stat-item">
+        <div class="label">Ataque</div>
+        <div class="value" id="modal-ataque"></div>
+      </div>
+      <div class="stat-item">
+        <div class="label">Defensa</div>
+        <div class="value" id="modal-defensa"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const contenedor = document.getElementById('pokedex-container');
+const cantidadPokemon = 150;
+
+async function traerPokemons() {
+    for (let i = 1; i <= cantidadPokemon; i++) {
+        await obtenerPokemon(i);
+    }
+}
+
+async function obtenerPokemon(id) {
+    try {
+        const url = `https://pokeapi.co/api/v2/pokemon/${id}`;
+        const respuesta = await fetch(url);
+        const pokemon = await respuesta.json();
+        crearTarjetaAPI(pokemon);
+    } catch (error) {
+        console.error("Error trayendo datos de la API:", error);
+    }
+}
+
+function crearTarjetaAPI(pokemon) {
+    const tarjeta = document.createElement('div');
+    tarjeta.classList.add('card');
+
+    const tipo = pokemon.types[0].type.name;
+    tarjeta.classList.add(tipo);
+
+    const idFormateado = pokemon.id.toString().padStart(3, '0');
+
+    tarjeta.innerHTML = `
+        <span class="number">#${idFormateado}</span>
+        <img src="${pokemon.sprites.other['official-artwork'].front_default}" alt="${pokemon.name}">
+        <h3 class="pokemon-name">${pokemon.name}</h3>
+        <p>Tipo: ${tipo}</p>
+    `;
+
+    tarjeta.addEventListener('click', () => abrirModal(pokemon));
+    contenedor.appendChild(tarjeta);
+}
+
+const modal = document.getElementById('modal-pokemon');
+const botonCerrar = document.getElementById('cerrar-modal');
+
+function abrirModal(pokemon) {
+    document.getElementById('modal-img').src = pokemon.sprites.other['official-artwork'].front_default;
+    document.getElementById('modal-nombre').innerText = pokemon.name.toUpperCase();
+    document.getElementById('modal-altura').innerText = pokemon.height / 10;
+    document.getElementById('modal-peso').innerText = pokemon.weight / 10;
+    document.getElementById('modal-hp').innerText = pokemon.stats[0].base_stat;
+    document.getElementById('modal-ataque').innerText = pokemon.stats[1].base_stat;
+    document.getElementById('modal-defensa').innerText = pokemon.stats[2].base_stat;
+
+    modal.style.display = 'flex';
+}
+
+botonCerrar.addEventListener('click', () => {
+    modal.style.display = 'none';
+});
+
+window.addEventListener('click', (evento) => {
+    if (evento.target === modal) {
+        modal.style.display = 'none';
+    }
+});
+
+const inputBuscador = document.getElementById('buscador');
+
+inputBuscador.addEventListener('keyup', (evento) => {
+    const textoBusqueda = evento.target.value.toLowerCase();
+    const tarjetas = document.querySelectorAll('.card');
+
+    tarjetas.forEach(tarjeta => {
+        const nombrePokemon = tarjeta.querySelector('.pokemon-name').innerText.toLowerCase();
+
+        if (nombrePokemon.includes(textoBusqueda)) {
+            tarjeta.style.display = 'block';
+        } else {
+            tarjeta.style.display = 'none';
+        }
+    });
+});
+
+traerPokemons();
+</script>
+</body>
+</html>
